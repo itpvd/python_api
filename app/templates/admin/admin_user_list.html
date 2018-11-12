@@ -8,9 +8,6 @@
         <table class="table table-striped custab">
             <thead>
                 <a href="/formAddUser" class="btn btn-primary btn-xs pull-right"><b>+</b> Add new user</a>
-                {%if allRecord.__len__()==0%}
-                There are no user. Please add a new user!
-                {%else%}
                 <tr>
                     <th>ID</th>
                     <th>Username</th>
@@ -19,25 +16,185 @@
                     <th class="text-center">Action</th>
                 </tr>
             </thead>
-            {%for user in listUser.items%}
-            <tr>
-                <td>{{user['id']}}</td>
-                <td>{{user['username']}}</td>
-                <td>{{user['role']}}</td>
-                <td>{{user['email']}}</td>
-                <td class="text-center"><a class='btn btn-info btn-xs' href="/formEditUser?id={{user['id']}}"><span class="glyphicon glyphicon-edit"></span> Edit</a> <a href="/deleteUser?id={{user['id']}}" class="btn btn-danger btn-xs"><span class="glyphicon glyphicon-remove"></span> Del</a></td>
-            </tr>
-            {%endfor%}
-            {%endif%}
+            <tbody>
+            </tbody> 
         </table>
-        {% for page_num in listUser.iter_pages() %}
-        {% if page_num %}
-        <a class="btn btn-outline-info mb-4" href="{{ url_for('listUser', page=page_num) }}">{{ page_num }}</a>
-        {% else %}
-        ...
-        {% endif %}
-        {% endfor %}
     </div>
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" role="dialog">
+        <div class="modal-dialog">   
+          <!-- Modal content-->
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+              <h4 class="modal-title">Update User</h4>
+          </div>
+          <div class="modal-body">
+              <div class="panel">
+                <form method="POST">
+                    <div class="form-group" id="username">
+                    </div>
+                    <div class="form-group" id="password">
+                    </div>
+                    <div class="form-group" id="email">
+                    </div>
+                    <div class="form-group" id ="gender">
+                    </div>
+                    <div class="form-group" id="birthday">
+                    </div>
+                    <div class="form-group" id="phone">
+                    </div>
+                    <div class="form-group" id="role">
+                    </div>
+                    <center id ="id">
+                       <button id="update" type="submit" class="btn btn-primary">Submit</button>
+                       <a href="/listPost"><button type="button" class="btn btn-danger">Cancel</button></a><br>
+                   </form>
+               </div>
+           </div>
+       </div>
+   </div>
 </div>
-</div>
+<script type="text/javascript">
+   $.ajax({
+    type:"GET",
+    dataType: "json",
+    url: "http://127.0.0.1:5000/listUser",
+    success: function(data){
+        if (data.status == '401')
+        {
+            alert("You need to login first!")
+            location.href = "formLogin"    
+        }
+        else if (data['status'] == '200')
+        {
+            var list_user;
+            for (i = 0; i < data['len']; i++) {
+                list_user += "<tr><td>"+(i+1)+"</td><td>" + data[i].username + "</td><td>" + data[i].role + "</td><td>"+ data[i].email + "</td>"+ "<td class=\"text-center\"><button  data-id=\"" +  data[i].id  + "\" class='btn btn-info btn-xs' data-toggle=\"modal\" data-target=\"#myModal\"><span class=\"glyphicon glyphicon-edit\"></span> Edit</button><button data-id=\"" +  data[i].id  + "\" class=\"btn btn-danger btn-xs\" ><span class=\"glyphicon glyphicon-remove\"></span> Del</button></td></tr> "
+            }
+            $("table tbody").append(list_user);   
+            $(".btn.btn-danger.btn-xs").click(delete_item);
+            $(".btn.btn-info.btn-xs").click(edit_item);
+        }
+        else
+        {
+            alert("ERROR"+data.error+"!");
+            location.href = "error"       
+        }
+    }
+    })
+   function delete_item() {
+    var id = $(this).attr('data-id');
+    jQuery.ajax({
+        type: 'DELETE',
+        dataType: "json",
+        url: "http://127.0.0.1:5000/deleteUser/"+ id,
+        success: function(data) {
+            if (data.status == '401')
+            {
+              alert("You need to login first!")
+              location.href = "formLogin"    
+            }
+            else if (data.status == '200')
+            {
+                alert('Delete is successful!')
+                location.href = "showListUser" 
+            }
+            else
+            {
+                alert("ERROR"+data.error+"!");
+                location.href = "error"       
+            }
+        }
+    });
+    }
+    function edit_item() {
+        var id = $(this).attr('data-id');
+        $.ajax({     
+            type: 'GET',
+            dataType: "json",
+            url: "http://127.0.0.1:5000/formEditUser/"+ id,  
+            success: function(data) {
+                if (data.status == '401')
+                {
+                    alert("You need to login first!")
+                    location.href = "formLogin"    
+                }
+                else if (data.status == '200')
+                {
+                    var id = "<input type=\"hidden\"  name=\"id\" value=\""+data.id+"\">"
+                    $("#id").append(id);
+                    var username = "<label>User name:</label>  <input type=\"text\" class=\"form-control\"  name=\"username\" value=\""+data.username+"\" disabled=\"true\" required >"
+                    $("#username").append(username);
+                    var password = "<label>Password:</label><input type=\"text\" class=\"form-control\"  name=\"password\" required>"
+                    $("#password").append(password);
+                    var email = "<label>Email:</label>  <input type=\"email\" class=\"form-control\" name=\"email\" value=\""+data.email+"\" required >"
+                    $("#email").append(email);
+                    var gender
+                    if(data.gender=="male"){
+                        gender="<label >Gender:</label>"+
+                        "<input type=\"radio\" name=\"gender\" id=\"option1\" value=\"male\" checked> Male </input>"+
+                        "<input type=\"radio\" name=\"gender\" id=\"option2\" value=\"female\"> Female </input><br>"
+                    }else{
+                        gender="<label >Gender:</label>"+
+                        "<input type=\"radio\" name=\"gender\" id=\"option1\" value=\"male\" > Male </input>"+
+                        "<input type=\"radio\" name=\"gender\" id=\"option2\" value=\"female\" checked> Female </input><br>"
+                    }
+                    $("#gender").append(gender);
+                    var birthday = "<label >Birthday:</label> <input type=\"date\" class=\"form-control\" name=\"birthday\"  value=\""+data.birthday+"\" required>"
+                    $("#birthday").append(birthday);
+                    var phone = "<label >Phone:</label><input type=\"text\" class=\"form-control\" placeholder=\"Phone number\" name=\"phone\" value=\""+data.phone+"\" pattern=\"[0-9]{5,15}\" title=\"Phone should only contain number, from 1 t0 15 number\" required>"
+                    $("#phone").append(phone);
+                    var role
+                    if(data.role=="admin"){
+                        role="<label >Role:</label>"+
+                        "<input type=\"radio\" name=\"role\" id=\"option1\" value=\"admin\" checked> Admin </input>"+
+                        "<input type=\"radio\" name=\"role\" id=\"option2\" value=\"user\"> User </input><br>"
+                    }else{
+                        role="<label >Role:</label>"+
+                        "<input type=\"radio\" name=\"role\" id=\"option1\" value=\"admin\" > Admin </input>"+
+                        "<input type=\"radio\" name=\"role\" id=\"option2\" value=\"user\" checked> User </input><br>"
+                    }
+                    $("#role").append(role);
+                }
+                else
+                {
+                  alert("ERROR"+data.error+"!");
+                  location.href = "error"       
+            }     
+        }
+    });
+    }
+    $("#update").click(function(){
+        $.ajax({
+            url: "http://127.0.0.1:5000/updateUser",
+            type:"PUT",
+            dataType: "json",
+            data: $('form').serialize(),
+            success: function(data){
+             if (data.status == '401')
+             {
+                alert("You need to login first!")
+                location.href = "formLogin"    
+            }
+            else if (data.status == '400')
+            {
+                alert(data.alert)  
+                location.href = "showListUser"  
+            }
+            else if (data.status == '200')
+            {
+                alert('update successfull')  
+                location.href = "showListUser"  
+            }
+            else
+            {
+                alert("ERROR"+data.error+"!");
+                location.href = "error"       
+            }
+
+        }
+    })
+    });
+</script>
 {% endblock %}

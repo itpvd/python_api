@@ -37,3 +37,6 @@ class Post(db.Model):
         post.title = self.title
         post.content = self.content
         db.session.commit()
+
+    def json_serialize(self):
+         return {'title': self.title,'date_posted': self.date_posted,'content':self.content}

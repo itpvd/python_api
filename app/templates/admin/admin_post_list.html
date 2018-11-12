@@ -1,40 +1,155 @@
 {% extends "admin.html" %}
 {% block content %}
 <div class="panel-heading">
- List Post
+   List Post
 </div>
 <div class="container">
-   <div class="row col-md-6 col-md-offset-2 custyle">
-       <table class="table table-striped custab">
+  <div class="row col-md-6 col-md-offset-2 custyle">
+     <table class="table table-striped custab">
         <thead>
-            <a href="/formAddPost" class="btn btn-primary btn-xs pull-right"><b>+</b> Add new post</a>
-            <tr>
-                <th>ID</th>
-                <th>Title</th>
-                <th>Date</th>
-                <th class="text-center">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
-
+          <a href="/formAddPost" class="btn btn-primary btn-xs pull-right"><b>+</b> Add new post</a>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Date</th>
+            <th class="text-center">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="myModal" role="dialog">
+  <div class="modal-dialog">   
+    <!-- Modal content-->
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Update Post</h4>
+    </div>
+    <div class="modal-body">
+        <div class="panel">
+          <form method="POST">
+            <div class="form-group" id="title" >    
+            </div>
+            <div class="form-group" id="content" >
+            </div>
+            <center id ="id">
+               <button id="update" type="submit" class="btn btn-primary">Submit</button>
+               <a href="/listPost"><button type="button" class="btn btn-danger">Cancel</button></a><br>
+           </form>
+       </div>
+   </div>
 </div>
 </div>
 <script type="text/javascript">
- $.ajax({
-    type:"GET",
-    dataType: "json",
-    url: "http://127.0.0.1:5000/listPost",
-    success: function(data){
-        console.log(data);
-        if (data.status == 'listPost_successful')
-        {
-            alert('welecome to website!');
-            var markup = "<tr><td><input type='checkbox' name='record'></td><td>" + data.status + "</td><td>" + data.status + "</td></tr>";
-            $("table tbody").append(markup);   
+    $.ajax({
+        type:"GET",
+        dataType: "json",
+        url: "http://127.0.0.1:5000/listPost",
+        success: function(data){
+            if (data.status == '401')
+            {
+                alert("You need to login first!")
+                location.href = "formLogin"    
+            }
+            else if (data['status'] == '200')
+            {
+                var list_post;
+                for (i = 0; i < data['len']; i++) {
+                list_post += "<tr><td>"+(i+1)+"</td><td>" + data[i].title + "</td><td>" + data[i].date_posted + "</td>"+ "<td class=\"text-center\"><button  data-id=\"" +  data[i].id  + "\" class='btn btn-info btn-xs' data-toggle=\"modal\" data-target=\"#myModal\"><span class=\"glyphicon glyphicon-edit\"></span> Edit</button><button data-id=\"" +  data[i].id  + "\" class=\"btn btn-danger btn-xs\" ><span class=\"glyphicon glyphicon-remove\"></span> Del</button></td></tr> "
+                }
+                $("table tbody").append(list_post);   
+                $(".btn.btn-danger.btn-xs").click(delete_item);
+                $(".btn.btn-info.btn-xs").click(edit_item);
+            }
+            else
+            {
+                alert("ERROR"+data.error+"!");
+                location.href = "error"       
+            }
+
         }
+    })
+    function delete_item() {
+        var id = $(this).attr('data-id');
+        jQuery.ajax({
+        type: 'DELETE',
+        dataType: "json",
+        url: "http://127.0.0.1:5000/deletePost/"+ id,
+        success: function(data) {
+            if (data.status == '401')
+            {
+                alert("You need to login first!")
+                location.href = "formLogin"    
+            }
+            else if (data.status == '200')
+            {
+                alert('Delete is successful!')
+                location.href = "showListPost" 
+            }
+            else
+            {
+                alert("ERROR"+data.error+"!");
+                location.href = "error"       
+            }
+        }
+        });
     }
-})
+    function edit_item() {
+        var id = $(this).attr('data-id');
+        $.ajax({     
+        type: 'GET',
+        dataType: "json",
+        url: "http://127.0.0.1:5000/formEditPost/"+ id,  
+        success: function(data) {
+            if (data.status == '401')
+            {
+                alert("You need to login first!")
+                location.href = "formLogin"    
+            }
+            else if (data.status == '200')
+            {
+                var id = "<input type=\"hidden\"  name=\"id\" value=\""+data.post.id+"\">"
+                $("#id").append(id);
+                var title = "<label>Title:</label>  <input type=\"text\" class=\"form-control\" placeholder=\"Title\" name=\"title\" value=\""+data.post.title+"\" required >"
+                $("#title").append(title);
+                var content = "<label >Content:</label> <textarea id=\"content\" class=\"form-control\" rows=\"15\" name=\'content\' required>"+data.post.content+"</textarea>"
+                $("#content").append(content);
+            }
+            else
+            {
+                alert("ERROR"+data.error+"!");
+                location.href = "error"       
+            }           
+        }
+        });
+    }
+    $("#update").click(function(){
+        $.ajax({
+        url: "http://127.0.0.1:5000/updatePost",
+        type:"PUT",
+        dataType: "json",
+        data: $('form').serialize(),
+        success: function(data){
+            if (data.status == '401')
+            {
+                alert("You need to login first!")
+                location.href = "formLogin"    
+            }
+            else if (data.status == '200')
+            {
+                alert('update successfull')  
+                location.href = "showListPost"  
+            }
+            else
+            {
+                alert("ERROR"+data.error+"!");
+                location.href = "error"       
+            }
+        }
+        })
+    });
 </script>
 {% endblock %}

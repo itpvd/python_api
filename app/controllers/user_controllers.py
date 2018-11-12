@@ -1,59 +1,74 @@
-from flask import Flask, render_template,url_for,flash,redirect,request
+from flask import Flask, render_template,url_for,flash,redirect,request,json
 from app import app,db,mail
 from app.models.user import User
 from flask_login import login_user,logout_user,current_user
 from random import *
 from functools import wraps
 
-#function check authen admin
+#Function check authen admin
 def login_required_admin(f):
     @wraps(f)
     def wrap(*args, **kwargs):
         if current_user.is_authenticated==False or current_user.role!='admin':
-            flash("You need to login first")
-            return redirect(url_for('formLogin')) 
+            return json.dumps({'status':'401'});
         else:
             try:
                 return f(*args, **kwargs)
             except Exception as exception:
-                return render_template('error/admin_error.html',error=type(exception).__name__)
+                return json.dumps({'error':type(exception).__name__});
     return wrap
-#function check authen user
+
+#Function check authen user
 def login_required_user(f):
     @wraps(f)
     def wrap(*args, **kwargs):
         if current_user.is_authenticated==False:
-            flash("You need to login first")
-            return redirect(url_for('formLogin')) 
+            return json.dumps({'status':'401'});
         else:
             try:
                 return f(*args, **kwargs)
             except Exception as exception:
-                return render_template('error/user_error.html',error=type(exception).__name__)
+                return json.dumps({'error':type(exception).__name__});
     return wrap
                            
-#--USER MANAGER function--
-#show list user
+#list user page
+@app.route("/showListUser")
+@login_required_admin
+def showListUser():
+    return render_template('admin/admin_user_list.html')
+
+#Add user page
+@app.route("/formAddUser")
+@login_required_admin
+def formAddUser():
+    return render_template('admin/admin_user_add.html')
+
+#Change password page
+@app.route("/formChangePassword", methods=['GET'])
+@login_required_user
+def formChangePassword():
+    return render_template('user/change_password.html')
+
+#Forget password page
+@app.route("/formForgetPassword", methods=['GET'])
+def formForgetPassword():
+    return render_template('user/foget_password.html')
+
+#Show list all user
 @app.route("/listUser")
 @login_required_admin
 def listUser():
     allRecord = User.listAllUser()
     page = request.args.get('page', 1, type=int)
     listUser = User.numberUserPerPage(page,10)
-    return render_template("admin/admin_user_list.html",listUser = listUser,allRecord=allRecord)
-#delete user 
-@app.route("/deleteUser", methods=['GET'])
-@login_required_admin
-def deleteUser():
-    id = request.args['id']
-    User.deleteUser(id)
-    return redirect('listUser')
-#show form add user
-@app.route("/formAddUser")
-@login_required_admin
-def formAddUser():
-    return render_template('admin/admin_user_add.html')
-#create new user
+    dic={}
+    for i in allRecord:
+        dic[str(allRecord.index(i))]={'id': i.id,'username': i.username,'password': i.password,'email':i.email,'gender':i.gender,'birthday':i.birthday,'phone':i.phone,'role':i.role}
+    dic['len']=len(allRecord)
+    dic['status']="200"
+    return json.dumps(dic);
+
+#Create new user
 @app.route("/addUser", methods=['POST'])
 @login_required_admin
 def addUser():
@@ -61,20 +76,26 @@ def addUser():
     if User.userExists(input['username'])==False  and User.checkLenPass(input['password']):
         user = User(input['username'],input['password'],input['email'],input['gender'],input['birthday'],input['phone'],input['role'])
         user.createUser()
-        flash('Create user is successfull')
-        return redirect('formAddUser')
+        return json.dumps({'status':'200'})
     else: 
-        flash(User.alertRegister(input['username'],input['password'],input['password']))
-        return redirect('formAddUser')
-#show form edit user
-@app.route("/formEditUser", methods=['GET'])
+        return json.dumps({'status':'400',"alert":User.alertRegister(input['username'],input['password'],input['password'])})
+
+#Delete user 
+@app.route("/deleteUser/<id>", methods=['DELETE'])
 @login_required_admin
-def formEditUser():
-    id = request.args['id']
+def deleteUser(id=None):
+    User.deleteUser(id)
+    return json.dumps({"status":"200"})
+
+#Show form edit user
+@app.route("/formEditUser/<id>", methods=['GET'])
+@login_required_admin
+def formEditUser(id=None):
     user = User.findUserById(id)
-    return render_template('admin/admin_user_update.html',user=user)
-#update user in database
-@app.route("/updateUser",methods=['POST'])
+    return json.dumps({'id': user.id,'username': user.username,'password': user.password,'email':user.email,'gender':user.gender,'birthday':user.birthday,'phone':user.phone,'role':user.role,"status":"200"})
+
+#Update user
+@app.route("/updateUser",methods=['PUT'])
 @login_required_admin
 def updateUser():
     input = request.form
@@ -82,17 +103,11 @@ def updateUser():
     if User.checkLenPass(input['password']):
         user = User(input['username'],input['password'],input['email'],input['gender'],input['birthday'],input['phone'],input['role'])
         user.updateUser(id)
-        flash('Update user is successfull')
-        return redirect(url_for('formEditUser',id=id))
+        return json.dumps({'status':'200'});    
     else:
-        flash('Password of at least 8 characters, including char and numbers, at least 1 capital letter')
-        return redirect(url_for('formEditUser',id=id))
-#show form change Password
-@app.route("/formChangePassword", methods=['GET'])
-@login_required_user
-def formChangePassword():
-    return render_template('user/change_password.html')
-#change Password
+        return json.dumps({'status':'400','alert':'Password of at least 8 characters, including char and numbers, at least 1 capital letter'}); 
+
+#Change Password
 @app.route("/changePassword",methods=['POST'])
 @login_required_user
 def changePassword():
@@ -102,17 +117,20 @@ def changePassword():
         user = User(current_user.username,input['password'],current_user.email,current_user.gender,current_user.birthday,current_user.phone,current_user.role)
         user.updateUser(id)
         flash('Change password successfull')
-        return redirect('formChangePassword')
+        return json.dumps({'status':'200'});
     else:
         flash(User.alertChangePassword(current_user.password,input['passwordold'],input['password'],input['passwordcf']))
-        return redirect('formChangePassword')
-#show form change Profile
+        return json.dumps({'status':'400'});
+
+#Show form change Profile
 @app.route("/formChangeProfile", methods=['GET'])
 @login_required_user
 def formChangeProfile():
     id = current_user.id
     user = User.findUserById(id)
     return render_template('user/change_profile.html',user=user)
+
+#Change profile
 @app.route("/changeProfile",methods=['POST'])
 @login_required_user
 def changeProfile():
@@ -120,13 +138,9 @@ def changeProfile():
     id = current_user.id
     user = User(current_user.username,current_user.password,input['email'],input['gender'],input['birthday'],input['phone'],current_user.role)
     user.updateUser(id)
-    flash('Change profile successfull')
-    return redirect('formChangeProfile')
-#show form foget password
-@app.route("/formForgetPassword", methods=['GET'])
-def formForgetPassword():
-    return render_template('user/foget_password.html')
-#send mail
+    return json.dumps({'status':'200'})
+
+#Send password to mail when forget password
 @app.route("/sendEmail",methods=['POST'])
 def senEmail():
     input = request.form
@@ -137,8 +151,7 @@ def senEmail():
                       recipients=["%s"%user.email],
                       body="hi %s, new password:%s,thank you."%(user.username,user.password))
         mail.send(msg)
-        flash('The password has been sent to your email')
-        return redirect('formLogin')
+        return json.dumps({'status':'200','alert':'The password has been sent to your email'})
     else:
         flash('User name or email wrong')
-        return redirect('formForgetPassword')
+        return json.dumps({'status':'400'})

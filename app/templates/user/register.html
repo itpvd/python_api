@@ -15,15 +15,6 @@
   <div class="container">
     <h1 class="form-heading">Register Form</h1>
     <div class="login-form">
-      {% with messages = get_flashed_messages() %}
-      {% if messages %}
-      <ul class=flashes>
-        {% for message in messages %}
-        <li><b>{{ message }}!</b></li>
-        {% endfor %}
-      </ul>
-      {% endif %}
-      {% endwith %}
       <div class="main-div">
         <div class="panel">
          <h2>REGISTER</h2>
@@ -82,17 +73,20 @@
       dataType: "json",
       data: $('form').serialize(),
       success: function(data){
-        if (data.status == 'register_successful')
+        if (data.status == '200')
         {
+          alert("Resgiter is successful!")
           location.href = "formRegister"    
         }
-        if (data.status == 'register_failed')
+        else if (data.status == '400')
         {
+          alert(data.alert)
           location.href = "formRegister"    
         }
-        if (data.status == 'exception')
+        else
         {
-          location.href = "listUser"    
+          alert("ERROR"+data.error+"!");
+          location.href = "error"    
         }
       }
     })

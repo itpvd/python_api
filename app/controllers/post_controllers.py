@@ -3,80 +3,97 @@ from app import app,db
 from app.models.post import Post
 from flask_login import login_user,logout_user,current_user
 from functools import wraps
+import datetime
 
-#function check authen admin
+#Function check authen admin
 def login_required_admin(f):
     @wraps(f)
     def wrap(*args, **kwargs):
         if current_user.is_authenticated==False or current_user.role!='admin':
-            flash("You need to login first")
-            return json.dumps({'status':'not_authenticated'});
+            return json.dumps({'status':'401'});
         else:
             try:
                 return f(*args, **kwargs)
             except Exception as exception:
-                return json.dumps({'status':'exception','error':type(exception).__name__});
+                return json.dumps({'error':type(exception).__name__});
     return wrap
-#function check authen user
+
+#Function check authen user
 def login_required_user(f):
     @wraps(f)
     def wrap(*args, **kwargs):
         if current_user.is_authenticated==False:
-            flash("You need to login first")
-            return json.dumps({'status':'not_authenticated'});
+            return json.dumps({'status':'401'});
         else:
             try:
                 return f(*args, **kwargs)
             except Exception as exception:
-                return json.dumps({'status':'exception','error':type(exception).__name__});
+                return json.dumps({'error':type(exception).__name__});
     return wrap
 
-#--POST MANAGER function--
-#show list all post
+#List post page
 @app.route("/showListPost")
 @login_required_admin
 def showListPost():
     return render_template('admin/admin_post_list.html')
-@app.route("/listPost")
-#@login_required_admin
-def listPost():
-    allRecord = Post.listAllPost()
-    page = request.args.get('page', 1, type=int)
-    listPost = Post.numberPostPerPage(page,10)
-    object_dict = {x.id: x for x in allRecord}
-    return json.dumps(object_dict);
-   
-@app.route("/deletePost", methods=['GET'])
-@login_required_admin
-def deletePost():
-      id = request.args['id']
-      Post.deletePost(id)
-      return redirect('listPost')
 
-#show form add post
+#Add post page
 @app.route("/formAddPost")
 @login_required_admin
 def formAddPost():
     return render_template('admin/admin_post_add.html')
-#create new post
+
+#View post page
+@app.route("/viewPostPage")
+@login_required_admin
+def viewPostPage():
+    return render_template('user/post_list.html')
+
+#Detail post page
+@app.route("/detailPostPage")
+@login_required_admin
+def detailPostPage():
+    return render_template('user/post_detail.html')
+
+#Show list post
+@app.route("/listPost")
+@login_required_admin
+def listPost():
+    allRecord = Post.listAllPost()
+    page = request.args.get('page', 1, type=int)
+    listPost = Post.numberPostPerPage(page,10)
+    dic={}
+    for i in allRecord:
+        dic[str(allRecord.index(i))]={'id': i.id,'title': i.title,'date_posted': i.date_posted,'content':i.content}
+    dic['len']=len(allRecord)
+    dic['status']="200"
+    return json.dumps(dic);
+
+#Create new post
 @app.route("/addPost", methods=['POST'])
 @login_required_admin
 def addPost():
     input = request.form
     post = Post(input['title'],input['content'])
     post.createPost()
-    flash('Create new post is successful')
-    return json.dumps({'status':'add_post_successful'})
-
-#show form edit post
-@app.route("/formEditPost",methods=['GET'])
+    return json.dumps({'status':'200'})
+   
+#Delete post  
+@app.route("/deletePost/<id>", methods=['DELETE'])
 @login_required_admin
-def formEditPost():
-    id = request.args['id']
+def deletePost(id=None):
+      Post.deletePost(id)
+      return json.dumps({'status':'200'});
+
+#Show form edit post
+@app.route("/formEditPost/<id>",methods=['GET'])
+@login_required_admin
+def formEditPost(id=None):
     post = Post.findPostById(id)
-    return render_template('admin/admin_post_update.html',post=post)
-#update post in database
-@app.route("/updatePost",methods=['POST'])
+    return json.dumps({'post':{'id': post.id,'title': post.title,'date_posted': post.date_posted,'content':post.content},"status":"200"})
+
+#Update post 
+@app.route("/updatePost",methods=['PUT'])
 @login_required_admin
 def updatePost():
     input = request.form
@@ -84,21 +101,23 @@ def updatePost():
     post = Post(input['title'],input['content'])
     post.updatePost(id)
     flash('Update post is successful')
-    return redirect(url_for('formEditPost',id=id))
+    return json.dumps({'status':'200'})
 
-#POST VIEW function
-#show list all post
+#Show list all post on user screen
 @app.route("/viewPost")
 @login_required_user
 def viewPost():
-    page = request.args.get('page', 1, type=int)
-    listPost = Post.numberPostPerPage(page,5)
-    return render_template("user/post_list.html",listPost = listPost)   
-#show detail post
-@app.route("/detailPost")
+    allRecord = Post.listAllPost()
+    dic={}
+    for i in allRecord:
+        dic[str(allRecord.index(i))]={'id': i.id,'title': i.title,'date_posted': i.date_posted,'content':i.content}
+    dic['len']=len(allRecord)
+    dic['status']="200"
+    return json.dumps(dic); 
+    
+@app.route("/detailPosts/<id>")
 @login_required_user
-def detailPost():
-    id = request.args['id']
-    post = Post.findPostById(id)
-    return render_template("user/post_detail.html",post = post)
+def detailPosts(id=None):
+    post = Post.findPostById(id_detail)
+    return json.dumps({'post':{'id': post.id,'title': post.title,'date_posted': post.date_posted,'content':post.content},"status":"200"})
     

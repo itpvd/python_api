@@ -15,15 +15,6 @@
   <div class="container">
     <h1 class="form-heading">login Form</h1>
     <div class="login-form">
-      {% with messages = get_flashed_messages() %}
-      {% if messages %}
-      <ul class=flashes>
-        {% for message in messages %}
-        <li><b>{{ message }}!</b></li>
-        {% endfor %}
-      </ul>
-      {% endif %}
-      {% endwith %}
       <div class="main-div">
         <div class="panel">
          <h2><b>LOGIN</b></h2>
@@ -54,23 +45,25 @@
       data: $('form').serialize(),
       success: function(data){
         console.log(data.status);
-        if (data.status == 'login_user')
+        if (data.status == '200' && data.role=="user")
         {
           alert('welecome to website!');
-          location.href = "viewPost"    
+          location.href = "viewPostPage"    
         }
-        if (data.status == 'login_admin')
+        else if (data.status == '200' && data.role=="admin")
         {
           alert('welecome to website!');
-          location.href = "listUser"    
+          location.href = "showListUser"    
         }
-        if (data.status == 'login_failed')
+        else if (data.status == '401')
         {
+          alert('Username or password is incorrect!');
           location.href = "formLogin"    
         }
-        if (data.status == 'exception')
+        else
         {
-          location.href = "listUser"    
+          alert("ERROR"+data.error+"!");
+          location.href = "error"    
         }
       }
     })

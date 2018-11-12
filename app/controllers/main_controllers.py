@@ -4,12 +4,23 @@ from app.models.user import User
 from flask_login import login_user,logout_user
 
 #--LOGIN function--
-#form login
+#Login page
 @app.route("/")
 @app.route("/formLogin")
 def formLogin():
     return render_template('user/login.html',title='login')
-#check login
+
+#register page
+@app.route("/formRegister")
+def formRegister():
+    return render_template('user/register.html',title='register')
+
+#error page
+@app.route("/error")
+def error():
+    return render_template('error/error.html')
+
+#Login
 @app.route("/login", methods=['POST'])
 def login():
     try:
@@ -17,22 +28,17 @@ def login():
         user = User.findUserByName(input['username'])
         if user and user.password == input['password'] and user.role=='user':
             login_user(user)
-            return json.dumps({'status':'login_user'});
+            return json.dumps({'status':'200','role':'user'});
         elif user and user.password == input['password'] and user.role=='admin':
             login_user(user)
-            return json.dumps({'status':'login_admin'});
+            return json.dumps({'status':'200','role':'admin'});
         else:
             flash('User name or password is incorrect')
-            return json.dumps({'status':'login_failed'});
+            return json.dumps({'status':'401'});
     except Exception as exception:
-        return json.dumps({'status':'exception','error':type(exception).__name__});
+        return json.dumps({'error':type(exception).__name__});
 
-#--REGISTER function--
-#form register
-@app.route("/formRegister")
-def formRegister():
-    return render_template('user/register.html',title='register')
-#check register
+#Register
 @app.route("/register", methods=['POST'])
 def register():
     try:
@@ -41,13 +47,11 @@ def register():
         if not user  and input['password']== input['confirmpass'] and  User.checkLenPass(input['password']):
             user = User(input['username'],input['password'],input['email'],input['gender'],input['birthday'],input['phone'],'user')
             User.createUser(user)
-            flash('Account: %s created successfully'%user.username)
-            return json.dumps({'status':'register_successful'});
+            return json.dumps({'status':'200'});
         else:
-            flash(User.alertRegister(input['username'],input['password'],input['confirmpass']))
-            return json.dumps({'status':'register_failed'});
+            return json.dumps({'status':'400','alert':User.alertRegister(input['username'],input['password'],input['confirmpass'])});
     except Exception as exception:
-        return json.dumps({'status':'exception','error':type(exception).__name__});
+        return json.dumps({'error':type(exception).__name__});
         
 #Logout
 @app.route("/logout")
